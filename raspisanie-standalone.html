@@ -1587,6 +1587,33 @@ globalThis.SCHEDULE = {
     }).join('');
   }
 
+  function tomorrowPreviewHTML() {
+    const tomorrowDate = addDays(TODAY, 1);
+    const tomorrowDay = (TODAY_IDX + 1) % 7;
+    const tomorrowOffset = tomorrowDay === 0 ? 1 : 0;
+    const tomorrowWeek = WEEKS[(autoIndex() + tomorrowOffset) % N] || WEEKS[0];
+    const tomorrowLessons = lessonsFor(tomorrowWeek, DAYS[tomorrowDay].key);
+
+    tomorrowLessons.sort(function (a, b) {
+      const am = toMinutes(a.start);
+      const bm = toMinutes(b.start);
+      return (am == null ? 9999 : am) - (bm == null ? 9999 : bm);
+    });
+
+    let html = '<section class="tomorrow-preview">' +
+      '<button type="button" class="tomorrow-tab" id="tomorrowScheduleBtn">' +
+        '<span>Расписание на завтра</span>' +
+        '<span class="tomorrow-date">' + esc(DAYS[tomorrowDay].short + ' ' + tomorrowDate.getDate()) + '</span>' +
+      '</button>';
+
+    if (tomorrowLessons.length) {
+      html += '<div class="tomorrow-lessons">' + lessonListHTML(tomorrowLessons, {}) + '</div>';
+    } else {
+      html += '<div class="tomorrow-empty">Завтра пар нет</div>';
+    }
+    return html + '</section>';
+  }
+
   function renderContent(still) {
     if (still) contentEl.classList.add('still');
 
@@ -1600,54 +1627,38 @@ globalThis.SCHEDULE = {
       return (am == null ? 9999 : am) - (bm == null ? 9999 : bm);
     });
 
-    if (lessons.length === 0) {
-      const isWeekend = state.day >= 5;
-      contentEl.innerHTML =
-        '<div class="empty">' +
-        '<div class="emoji">' + (isWeekend ? '🌿' : '☕️') + '</div>' +
-        '<div class="title">' + (isWeekend ? 'Выходной' : 'Пар нет') + '</div>' +
-        '<div class="hint">' + esc(DAYS[state.day].full) + ' — занятий не найдено.</div>' +
-        '</div>';
-      if (still) requestAnimationFrame(function () { contentEl.classList.remove('still'); });
-      return;
-    }
-
     const onToday = state.offset === 0 && state.day === TODAY_IDX;
     const now = nowMinutes();
     const found = onToday ? pickCurrentAndNext(lessons, now) : { current: -1, next: -1 };
+
+    if (lessons.length === 0) {
+      if (onToday) {
+        contentEl.innerHTML = statusHTML(lessons, now) + tomorrowPreviewHTML();
+      } else {
+        const isWeekend = state.day >= 5;
+        contentEl.innerHTML =
+          '<div class="empty">' +
+          '<div class="emoji">' + (isWeekend ? '🌿' : '☕️') + '</div>' +
+          '<div class="title">' + (isWeekend ? 'Выходной' : 'Пар нет') + '</div>' +
+          '<div class="hint">' + esc(DAYS[state.day].full) + ' — занятий не найдено.</div>' +
+          '</div>';
+      }
+      if (still) requestAnimationFrame(function () { contentEl.classList.remove('still'); });
+      return;
+    }
 
     let html = '';
 
     if (onToday) html += statusHTML(lessons, now);
 
-    html += lessonListHTML(lessons, { onToday: onToday, now: now, found: found });
-
     if (onToday && found.current < 0 && found.next < 0) {
-      const tomorrowDate = addDays(TODAY, 1);
-      const tomorrowDay = (TODAY_IDX + 1) % 7;
-      const tomorrowOffset = tomorrowDay === 0 ? 1 : 0;
-      const tomorrowWeek = WEEKS[(autoIndex() + tomorrowOffset) % N] || WEEKS[0];
-      const tomorrowLessons = lessonsFor(tomorrowWeek, DAYS[tomorrowDay].key);
-      tomorrowLessons.sort(function (a, b) {
-        const am = toMinutes(a.start);
-        const bm = toMinutes(b.start);
-        return (am == null ? 9999 : am) - (bm == null ? 9999 : bm);
-      });
-
-      html += '<section class="tomorrow-preview">' +
-        '<button type="button" class="tomorrow-tab" id="tomorrowScheduleBtn">' +
-          '<span>Расписание на завтра</span>' +
-          '<span class="tomorrow-date">' + esc(DAYS[tomorrowDay].short + ' ' + tomorrowDate.getDate()) + '</span>' +
-        '</button>';
-
-      if (tomorrowLessons.length) {
-        html += '<div class="tomorrow-lessons">' + lessonListHTML(tomorrowLessons, {}) + '</div>';
-      } else {
-        html += '<div class="tomorrow-empty">Завтра пар нет</div>';
-      }
-      html += '</section>';
+      html += tomorrowPreviewHTML();
+      contentEl.innerHTML = html;
+      if (still) requestAnimationFrame(function () { contentEl.classList.remove('still'); });
+      return;
     }
 
+    html += lessonListHTML(lessons, { onToday: onToday, now: now, found: found });
     contentEl.innerHTML = html;
 
     if (still) requestAnimationFrame(function () { contentEl.classList.remove('still'); });
