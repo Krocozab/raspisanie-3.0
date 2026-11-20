@@ -1,4 +1,4 @@
-const CACHE = 'schedule-v6';
+const CACHE = 'schedule-v7';
 
 const ASSETS = [
   './',
@@ -19,6 +19,10 @@ self.addEventListener('install', (event) => {
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

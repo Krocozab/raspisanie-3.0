@@ -630,11 +630,56 @@
     if (!document.hidden) loadWeather();
   }, 30 * 60 * 1000);
 
-  /* ---------------- service worker ---------------- */
+  /* ---------------- обновление приложения ---------------- */
 
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function () { /* без офлайна */ });
+      const updateBtn = document.getElementById('appUpdateBtn');
+      let registration = null;
+      let updateAccepted = false;
+
+      function showUpdateButton() {
+        if (!updateBtn) return;
+        updateBtn.hidden = false;
+        updateBtn.setAttribute('aria-label', 'Доступно обновление приложения');
+      }
+
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        registration = reg;
+
+        if (reg.waiting && navigator.serviceWorker.controller) showUpdateButton();
+
+        reg.addEventListener('updatefound', function () {
+          const installing = reg.installing;
+          if (!installing) return;
+          installing.addEventListener('statechange', function () {
+            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateButton();
+            }
+          });
+        });
+
+        setInterval(function () {
+          if (!document.hidden) reg.update().catch(function () { /* без обновления */ });
+        }, 30 * 60 * 1000);
+      }).catch(function () { /* без офлайна */ });
+
+      if (updateBtn) {
+        updateBtn.addEventListener('click', function () {
+          updateAccepted = true;
+          updateBtn.disabled = true;
+          updateBtn.textContent = 'Обновляем…';
+          if (registration && registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          } else {
+            window.location.reload();
+          }
+        });
+      }
+
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (updateAccepted) window.location.reload();
+      });
     });
   }
 })();
