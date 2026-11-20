@@ -12,7 +12,16 @@
     return;
   }
 
-  const WEEKS = DATA.weeks;
+  function loadSavedSchedule() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('schedule.edited') || 'null');
+      if (saved && Array.isArray(saved.weeks) && saved.weeks.length) return saved;
+    } catch (e) { /* используем исходные данные */ }
+    return DATA;
+  }
+
+  const ACTIVE_DATA = loadSavedSchedule();
+  const WEEKS = ACTIVE_DATA.weeks;
   const N = WEEKS.length;
   const MINUTES_ONLY = !!(DATA.meta && DATA.meta.minutesOnly);
   const APP_VERSION = '3.0.4';
@@ -119,7 +128,9 @@
   }
 
   (function pickSmartDay() {
-    if (hasLessons(currentWeek(), DAYS[TODAY_IDX].key)) return;
+    let nearestEnabled = true;
+    try { nearestEnabled = localStorage.getItem('schedule.nearest') !== 'false'; } catch (e) { /* default */ }
+    if (!nearestEnabled || hasLessons(currentWeek(), DAYS[TODAY_IDX].key)) return;
     for (let i = 0; i < 7; i++) {
       const idx = (TODAY_IDX + i) % 7;
       if (hasLessons(currentWeek(), DAYS[idx].key)) { state.day = idx; return; }
@@ -167,6 +178,13 @@
   const weatherDayButton = document.getElementById('weatherDayButton');
   const weatherDayMenu = document.getElementById('weatherDayMenu');
   const weatherStatus = document.getElementById('weatherStatus');
+  const widgetStrip = document.getElementById('widgetStrip');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsBackdrop = document.getElementById('settingsBackdrop');
+  const editorBackdrop = document.getElementById('editorBackdrop');
+  const editorWeek = document.getElementById('editorWeek');
+  const editorDay = document.getElementById('editorDay');
+  const editorLessons = document.getElementById('editorLessons');
   const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast?latitude=45.0355&longitude=38.9753&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=4';
 
   if (DATA.meta && DATA.meta.group) {
@@ -296,6 +314,7 @@
 
     const updated = current.time ? new Date(current.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
     weatherStatus.textContent = updated ? 'Обновлено в ' + updated + ' · прогноз Open-Meteo' : 'Прогноз Open-Meteo';
+    renderWidgets();
   }
 
   function showWeatherError() {
@@ -462,6 +481,18 @@
       '</div>';
   }
 
+  function categoryFor(lesson) {
+    const explicit = String(lesson && lesson.category || '').toLowerCase();
+    if (['lecture', 'practice', 'lab', 'sport', 'other'].indexOf(explicit) >= 0) return explicit;
+    const kind = String(lesson && lesson.kind || '').toLowerCase();
+    const subject = String(lesson && lesson.subject || '').toLowerCase();
+    if (subject.indexOf('физичес') >= 0 || subject.indexOf('спорт') >= 0) return 'sport';
+    if (kind.indexOf('лаб') >= 0) return 'lab';
+    if (kind.indexOf('л.') >= 0 || kind === 'л' || kind.indexOf('лек') >= 0) return 'lecture';
+    if (kind.indexOf('пр') >= 0 || kind.indexOf('прак') >= 0) return 'practice';
+    return 'other';
+  }
+
   function lessonListHTML(lessons, options) {
     const config = options || {};
     const onToday = !!config.onToday;
@@ -475,7 +506,7 @@
       const isPast = onToday && end != null && now >= end;
       const isNext = onToday && idx === found.next;
 
-      const cls = ['lesson'];
+      const cls = ['lesson', 'category-' + categoryFor(lesson)];
       if (isNow) cls.push('now');
       else if (isPast) cls.push('past');
 
@@ -509,31 +540,39 @@
     }).join('');
   }
 
-  function tomorrowPreviewHTML() {
-    const tomorrowDate = addDays(TODAY, 1);
-    const tomorrowDay = (TODAY_IDX + 1) % 7;
-    const tomorrowOffset = tomorrowDay === 0 ? 1 : 0;
-    const tomorrowWeek = WEEKS[(autoIndex() + tomorrowOffset) % N] || WEEKS[0];
-    const tomorrowLessons = lessonsFor(tomorrowWeek, DAYS[tomorrowDay].key);
+  function nextSchoolDay() {
+    for (let delta = 1; delta <= 14; delta++) {
+      const date = addDays(TODAY, delta);
+      const day = (TODAY_IDX + delta) % 7;
+      const offset = Math.floor((TODAY_IDX + delta) / 7);
+      const week = WEEKS[(autoIndex() + offset) % N] || WEEKS[0];
+      const lessons = lessonsFor(week, DAYS[day].key);
+      if (lessons.length) return { date: date, day: day, offset: offset, lessons: lessons, delta: delta };
+    }
+    return null;
+  }
 
-    tomorrowLessons.sort(function (a, b) {
+  function tomorrowPreviewHTML() {
+    const next = nextSchoolDay();
+    if (!next) {
+      return '<section class="tomorrow-preview"><div class="tomorrow-empty">Ближайших занятий не найдено</div></section>';
+    }
+
+    next.lessons.sort(function (a, b) {
       const am = toMinutes(a.start);
       const bm = toMinutes(b.start);
       return (am == null ? 9999 : am) - (bm == null ? 9999 : bm);
     });
 
+    const title = next.delta === 1 ? 'Расписание на завтра' : 'Расписание на ближайший учебный день';
     let html = '<section class="tomorrow-preview">' +
-      '<button type="button" class="tomorrow-tab" id="tomorrowScheduleBtn">' +
-        '<span>Расписание на завтра</span>' +
-        '<span class="tomorrow-date">' + esc(DAYS[tomorrowDay].short + ' ' + tomorrowDate.getDate()) + '</span>' +
-      '</button>';
-
-    if (tomorrowLessons.length) {
-      html += '<div class="tomorrow-lessons">' + lessonListHTML(tomorrowLessons, {}) + '</div>';
-    } else {
-      html += '<div class="tomorrow-empty">Завтра пар нет</div>';
-    }
-    return html + '</section>';
+      '<button type="button" class="tomorrow-tab" id="tomorrowScheduleBtn" data-next-offset="' + next.offset + '" data-next-day="' + next.day + '">' +
+        '<span>' + title + '</span>' +
+        '<span class="tomorrow-date">' + esc(DAYS[next.day].short + ' ' + next.date.getDate()) + '</span>' +
+      '</button>' +
+      '<div class="tomorrow-lessons">' + lessonListHTML(next.lessons, {}) + '</div>' +
+      '</section>';
+    return html;
   }
 
   function renderContent(still) {
@@ -604,21 +643,194 @@
     todayBtn.hidden = state.offset === 0 && state.day === TODAY_IDX;
   }
 
+  function getWidgetPrefs() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('schedule.widgets') || 'null');
+      return Object.assign({ next: true, today: false, weather: false }, saved || {});
+    } catch (e) {
+      return { next: true, today: false, weather: false };
+    }
+  }
+
+  function saveWidgetPrefs(prefs) {
+    try { localStorage.setItem('schedule.widgets', JSON.stringify(prefs)); } catch (e) { /* ignore */ }
+  }
+
+  function renderWidgets() {
+    if (!widgetStrip) return;
+    const prefs = getWidgetPrefs();
+    const week = currentWeek();
+    const todayLessons = lessonsFor(week, DAYS[TODAY_IDX].key).sort(function (a, b) {
+      return (toMinutes(a.start) || 9999) - (toMinutes(b.start) || 9999);
+    });
+    const now = nowMinutes();
+    const found = pickCurrentAndNext(todayLessons, now);
+    const next = found.current >= 0 ? todayLessons[found.current] : found.next >= 0 ? todayLessons[found.next] : null;
+    let html = '';
+
+    if (prefs.next) {
+      if (next) {
+        html += '<article class="widget-card widget-card-wide"><p class="widget-card-kicker">Ближайшая пара</p><p class="widget-card-value">' + esc(next.subject || 'Без названия') + '</p><p class="widget-card-meta">' + esc(next.start || '') + (next.room ? ' · ' + esc(next.room) : '') + '</p></article>';
+      } else {
+        const upcoming = nextSchoolDay();
+        html += '<article class="widget-card widget-card-wide"><p class="widget-card-kicker">Следующее занятие</p><p class="widget-card-value">' + (upcoming ? esc(upcoming.lessons[0].subject || 'Без названия') : 'Занятий пока нет') + '</p><p class="widget-card-meta">' + (upcoming ? 'Ближайший учебный день' : 'Расписание свободно') + '</p></article>';
+      }
+    }
+    if (prefs.today) {
+      html += '<article class="widget-card"><p class="widget-card-kicker">Итоги дня</p><p class="widget-card-value">' + todayLessons.length + ' ' + (todayLessons.length === 1 ? 'пара' : 'пар') + '</p><p class="widget-card-meta">' + (todayLessons[0] ? 'Первая в ' + esc(todayLessons[0].start) : 'Свободный день') + '</p></article>';
+    }
+    if (prefs.weather) {
+      html += '<article class="widget-card"><p class="widget-card-kicker">Погода</p><p class="widget-card-value">' + esc(weatherTemp ? weatherTemp.textContent : '—') + '</p><p class="widget-card-meta">Краснодар</p></article>';
+    }
+    widgetStrip.innerHTML = html;
+  }
+
+  function saveScheduleOverrides() {
+    try { localStorage.setItem('schedule.edited', JSON.stringify({ meta: DATA.meta, weeks: WEEKS })); } catch (e) { /* ignore */ }
+  }
+
+  function editorValue(index, field) {
+    const input = editorLessons.querySelector('[data-index="' + index + '"][data-field="' + field + '"]');
+    return input ? input.value.trim() : '';
+  }
+
+  function renderEditorLessons() {
+    if (!editorLessons || !editorWeek || !editorDay) return;
+    const weekIndex = Number(editorWeek.value) || 0;
+    const dayKey = DAYS[Number(editorDay.value) || 0].key;
+    const list = WEEKS[weekIndex].days[dayKey] || (WEEKS[weekIndex].days[dayKey] = []);
+    if (!list.length) {
+      editorLessons.innerHTML = '<div class="tomorrow-empty">На этот день пар нет</div>';
+      return;
+    }
+    editorLessons.innerHTML = list.map(function (lesson, index) {
+      return '<article class="editor-card" data-lesson-index="' + index + '">' +
+        '<div class="editor-grid">' +
+        '<label>Начало<input data-index="' + index + '" data-field="start" value="' + esc(lesson.start || '') + '" placeholder="08:00"></label>' +
+        '<label>Конец<input data-index="' + index + '" data-field="end" value="' + esc(lesson.end || '') + '" placeholder="09:30"></label>' +
+        '<label class="editor-grid-wide">Предмет<input data-index="' + index + '" data-field="subject" value="' + esc(lesson.subject || '') + '" placeholder="Название предмета"></label>' +
+        '<label>Тип<select data-index="' + index + '" data-field="kind"><option value="пр."' + (lesson.kind === 'пр.' ? ' selected' : '') + '>Практика</option><option value="л."' + (lesson.kind === 'л.' ? ' selected' : '') + '>Лекция</option><option value="лаб."' + (lesson.kind === 'лаб.' ? ' selected' : '') + '>Лабораторная</option></select></label>' +
+        '<label>Категория<select data-index="' + index + '" data-field="category"><option value="practice"' + (categoryFor(lesson) === 'practice' ? ' selected' : '') + '>Практика</option><option value="lecture"' + (categoryFor(lesson) === 'lecture' ? ' selected' : '') + '>Лекция</option><option value="lab"' + (categoryFor(lesson) === 'lab' ? ' selected' : '') + '>Лабораторная</option><option value="sport"' + (categoryFor(lesson) === 'sport' ? ' selected' : '') + '>Спорт</option><option value="other"' + (categoryFor(lesson) === 'other' ? ' selected' : '') + '>Другое</option></select></label>' +
+        '<label>Кабинет<input data-index="' + index + '" data-field="room" value="' + esc(lesson.room || '') + '" placeholder="303"></label>' +
+        '<label>Преподаватель<input data-index="' + index + '" data-field="teacher" value="' + esc(lesson.teacher || '') + '" placeholder="Фамилия И. О."></label>' +
+        '</div><div class="editor-card-actions"><button type="button" class="delete" data-delete-lesson="' + index + '">Удалить</button><button type="button" data-save-lesson="' + index + '">Сохранить</button></div></article>';
+    }).join('');
+  }
+
+  function openEditor() {
+    if (!editorBackdrop) return;
+    editorWeek.innerHTML = WEEKS.map(function (week, index) { return '<option value="' + index + '">' + esc(week.label || ('Неделя ' + (index + 1))) + '</option>'; }).join('');
+    editorDay.innerHTML = DAYS.map(function (day, index) { return '<option value="' + index + '">' + esc(day.full) + '</option>'; }).join('');
+    editorWeek.value = String((autoIndex() + state.offset) % N);
+    editorDay.value = String(state.day);
+    renderEditorLessons();
+    editorBackdrop.hidden = false;
+    if (settingsBackdrop) settingsBackdrop.hidden = true;
+  }
+
   function render() {
     renderWeekSwitch();
     renderDayTabs();
+    renderWidgets();
     renderContent(false);
     renderFootnote();
     renderTodayBtn();
     document.title = (currentWeek().label || 'Расписание') + ' · Расписание';
   }
 
+  function syncSettingsControls() {
+    const prefs = getWidgetPrefs();
+    document.querySelectorAll('[data-widget]').forEach(function (input) {
+      input.checked = !!prefs[input.getAttribute('data-widget')];
+    });
+    const nearest = document.getElementById('nearestDaySetting');
+    if (nearest) {
+      try { nearest.checked = localStorage.getItem('schedule.nearest') !== 'false'; } catch (e) { nearest.checked = true; }
+    }
+  }
+
+  if (settingsBtn && settingsBackdrop) {
+    settingsBtn.addEventListener('click', function () {
+      syncSettingsControls();
+      settingsBackdrop.hidden = false;
+    });
+  }
+
+  document.querySelectorAll('[data-close-modal]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const modal = document.getElementById(button.getAttribute('data-close-modal'));
+      if (modal) modal.hidden = true;
+    });
+  });
+
+  if (settingsBackdrop) {
+    settingsBackdrop.addEventListener('change', function (event) {
+      const widget = event.target.closest && event.target.closest('[data-widget]');
+      if (widget) {
+        const prefs = getWidgetPrefs();
+        prefs[widget.getAttribute('data-widget')] = widget.checked;
+        saveWidgetPrefs(prefs);
+        renderWidgets();
+      }
+      if (event.target.id === 'nearestDaySetting') {
+        try { localStorage.setItem('schedule.nearest', String(event.target.checked)); } catch (e) { /* ignore */ }
+      }
+    });
+  }
+
+  const editScheduleBtn = document.getElementById('editScheduleBtn');
+  const resetScheduleBtn = document.getElementById('resetScheduleBtn');
+  const addLessonBtn = document.getElementById('addLessonBtn');
+
+  if (editScheduleBtn) editScheduleBtn.addEventListener('click', openEditor);
+  if (resetScheduleBtn) resetScheduleBtn.addEventListener('click', function () {
+    if (window.confirm('Сбросить все локальные изменения расписания?')) {
+      try { localStorage.removeItem('schedule.edited'); } catch (e) { /* ignore */ }
+      window.location.reload();
+    }
+  });
+  if (editorWeek) editorWeek.addEventListener('change', renderEditorLessons);
+  if (editorDay) editorDay.addEventListener('change', renderEditorLessons);
+  if (addLessonBtn) addLessonBtn.addEventListener('click', function () {
+    const weekIndex = Number(editorWeek.value) || 0;
+    const dayKey = DAYS[Number(editorDay.value) || 0].key;
+    if (!WEEKS[weekIndex].days[dayKey]) WEEKS[weekIndex].days[dayKey] = [];
+    WEEKS[weekIndex].days[dayKey].push({ start: '08:00', end: '09:30', kind: 'пр.', subject: 'Новый предмет', room: '', teacher: '', category: 'practice' });
+    saveScheduleOverrides();
+    renderEditorLessons();
+    render();
+  });
+  if (editorLessons) editorLessons.addEventListener('click', function (event) {
+    const weekIndex = Number(editorWeek.value) || 0;
+    const dayKey = DAYS[Number(editorDay.value) || 0].key;
+    const list = WEEKS[weekIndex].days[dayKey] || [];
+    const deleteButton = event.target.closest && event.target.closest('[data-delete-lesson]');
+    const saveButton = event.target.closest && event.target.closest('[data-save-lesson]');
+    if (deleteButton) {
+      list.splice(Number(deleteButton.getAttribute('data-delete-lesson')), 1);
+      saveScheduleOverrides();
+      renderEditorLessons();
+      render();
+      return;
+    }
+    if (saveButton) {
+      const index = Number(saveButton.getAttribute('data-save-lesson'));
+      const lesson = list[index];
+      if (!lesson) return;
+      ['start', 'end', 'subject', 'kind', 'category', 'room', 'teacher'].forEach(function (field) {
+        lesson[field] = editorValue(index, field);
+      });
+      saveScheduleOverrides();
+      renderEditorLessons();
+      render();
+    }
+  });
+
   contentEl.addEventListener('click', function (event) {
     const tomorrowButton = event.target.closest && event.target.closest('#tomorrowScheduleBtn');
     if (!tomorrowButton) return;
-    const tomorrowDay = (TODAY_IDX + 1) % 7;
-    state.offset = tomorrowDay === 0 ? 1 : 0;
-    state.day = tomorrowDay;
+    state.offset = Number(tomorrowButton.getAttribute('data-next-offset')) || 0;
+    state.day = Number(tomorrowButton.getAttribute('data-next-day')) || 0;
     render();
   });
 

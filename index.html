@@ -36,12 +36,15 @@
             <button type="button" role="menuitem" data-theme-option="forest"><span>🌿</span> Лес</button>
           </div>
         </div>
+        <button type="button" class="icon-btn" id="settingsBtn" aria-label="Настройки" title="Настройки">⚙</button>
       </div>
     </header>
 
     <div class="week-switch" id="weekSwitch" role="tablist" aria-label="Выбор недели"></div>
 
     <nav class="day-tabs" id="dayTabs" aria-label="День недели"></nav>
+
+    <section class="widget-strip" id="widgetStrip" aria-label="Виджеты"></section>
 
     <main class="content" id="content"></main>
 
@@ -73,6 +76,55 @@
   <button type="button" class="app-update-btn" id="appUpdateBtn" hidden>
     Обновить приложение
   </button>
+
+  <div class="modal-backdrop" id="settingsBackdrop" hidden>
+    <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="modal-header">
+        <div>
+          <p class="modal-kicker">Персонализация</p>
+          <h2 id="settingsTitle">Настройки</h2>
+        </div>
+        <button type="button" class="icon-btn" data-close-modal="settingsBackdrop" aria-label="Закрыть">×</button>
+      </div>
+
+      <div class="settings-section">
+        <h3>Виджеты на главном экране</h3>
+        <p class="settings-hint">Выберите компактные карточки, которые будут показываться над расписанием.</p>
+        <label class="setting-row"><input type="checkbox" data-widget="next" checked><span><b>Ближайшая пара</b><small>Следующее занятие и время до него</small></span></label>
+        <label class="setting-row"><input type="checkbox" data-widget="today"><span><b>Итоги дня</b><small>Количество пар и первая пара</small></span></label>
+        <label class="setting-row"><input type="checkbox" data-widget="weather"><span><b>Погода</b><small>Температура в Краснодаре</small></span></label>
+      </div>
+
+      <div class="settings-section">
+        <h3>Поведение</h3>
+        <label class="setting-row"><input type="checkbox" id="nearestDaySetting" checked><span><b>Открывать ближайший учебный день</b><small>Пропускать выходные и пустые дни</small></span></label>
+      </div>
+
+      <div class="settings-section settings-actions">
+        <button type="button" class="settings-action" id="editScheduleBtn"><span>✎</span><span><b>Редактировать расписание</b><small>Пары, кабинеты и преподаватели</small></span><span>›</span></button>
+        <button type="button" class="settings-action" id="resetScheduleBtn"><span>↺</span><span><b>Сбросить изменения</b><small>Вернуть исходное расписание</small></span><span>›</span></button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="editorBackdrop" hidden>
+    <section class="settings-panel editor-panel" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+      <div class="modal-header">
+        <div>
+          <p class="modal-kicker">Локальные изменения</p>
+          <h2 id="editorTitle">Редактор расписания</h2>
+        </div>
+        <button type="button" class="icon-btn" data-close-modal="editorBackdrop" aria-label="Закрыть">×</button>
+      </div>
+      <div class="editor-selects">
+        <label>Неделя<select id="editorWeek"></select></label>
+        <label>День<select id="editorDay"></select></label>
+      </div>
+      <div id="editorLessons" class="editor-lessons"></div>
+      <button type="button" class="primary-btn" id="addLessonBtn">＋ Добавить пару</button>
+      <p class="settings-hint">Изменения сохраняются только на этом устройстве.</p>
+    </section>
+  </div>
 
   <script src="schedule.js"></script>
   <script src="app.js"></script>
