@@ -15,7 +15,7 @@
   const WEEKS = DATA.weeks;
   const N = WEEKS.length;
   const MINUTES_ONLY = !!(DATA.meta && DATA.meta.minutesOnly);
-  const APP_VERSION = '3.0.6';
+  const APP_VERSION = '3.0.4';
   const LATEST_RELEASE_URL = 'https://api.github.com/repos/Krocozab/raspisanie-3.0/releases/latest';
 
   const DAYS = [
