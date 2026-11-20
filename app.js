@@ -307,8 +307,11 @@
     weatherStatus.textContent = 'Проверьте подключение к интернету';
   }
 
+  let weatherRequestInFlight = false;
+
   async function loadWeather() {
-    if (!weatherCard) return;
+    if (!weatherCard || weatherRequestInFlight) return;
+    weatherRequestInFlight = true;
     weatherCard.classList.add('is-loading');
     try {
       const response = await fetch(WEATHER_URL, { cache: 'no-store' });
@@ -316,6 +319,8 @@
       renderWeather(await response.json());
     } catch (error) {
       showWeatherError();
+    } finally {
+      weatherRequestInFlight = false;
     }
   }
 
@@ -613,7 +618,10 @@
   }, 20000);
 
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) refreshLive();
+    if (!document.hidden) {
+      refreshLive();
+      loadWeather();
+    }
   });
 
   render();
