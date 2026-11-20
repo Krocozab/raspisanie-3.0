@@ -618,6 +618,64 @@ body {
 
 .status-done .status-label { color: var(--text); }
 
+.tomorrow-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.tomorrow-tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--line));
+  border-radius: var(--radius);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 75%),
+    var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 22px -14px var(--accent);
+}
+
+.tomorrow-tab:active { transform: scale(.985); }
+
+.tomorrow-date {
+  flex: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tomorrow-lessons {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.tomorrow-lessons .lesson {
+  box-shadow: none;
+}
+
+.tomorrow-empty {
+  padding: 15px 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  font-size: 13px;
+  text-align: center;
+}
+
 .t-left {
   margin-top: 3px;
   font-size: 11px;

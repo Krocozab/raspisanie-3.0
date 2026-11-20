@@ -460,6 +460,53 @@
       '</div>';
   }
 
+  function lessonListHTML(lessons, options) {
+    const config = options || {};
+    const onToday = !!config.onToday;
+    const now = Number.isFinite(config.now) ? config.now : 0;
+    const found = config.found || { current: -1, next: -1 };
+
+    return lessons.map(function (lesson, idx) {
+      const start = toMinutes(lesson.start);
+      const end = toMinutes(lesson.end);
+      const isNow = onToday && start != null && end != null && now >= start && now < end;
+      const isPast = onToday && end != null && now >= end;
+      const isNext = onToday && idx === found.next;
+
+      const cls = ['lesson'];
+      if (isNow) cls.push('now');
+      else if (isPast) cls.push('past');
+
+      let card = '<article class="' + cls.join(' ') + '" style="animation-delay:' + (idx * 22) + 'ms">';
+
+      if (isNow) card += '<span class="badge-now">сейчас</span>';
+
+      card += '<div class="lesson-time">' +
+        '<span class="t-start">' + esc(lesson.start || '') + '</span>' +
+        (lesson.end ? '<span class="t-end">' + esc(lesson.end) + '</span>' : '');
+
+      if (isNext && start != null) {
+        card += '<span class="t-left">через ' + humanMinutes(start - now) + '</span>';
+      } else if (isNow && end != null) {
+        card += '<span class="t-left">ещё ' + humanMinutes(end - now) + '</span>';
+      }
+
+      card += '</div>';
+      card += '<div class="lesson-body"><p class="lesson-subject">';
+      if (lesson.kind) card += '<span class="kind">' + esc(lesson.kind) + '</span>';
+      card += esc(lesson.subject || 'Без названия');
+      card += '</p>';
+
+      const chips = [];
+      if (lesson.room) chips.push('<span class="chip room">' + esc(lesson.room) + '</span>');
+      if (lesson.teacher) chips.push('<span class="chip teacher">' + esc(lesson.teacher) + '</span>');
+      if (chips.length) card += '<p class="lesson-meta">' + chips.join('') + '</p>';
+      if (lesson.note) card += '<p class="lesson-note">' + esc(lesson.note) + '</p>';
+
+      return card + '</div></article>';
+    }).join('');
+  }
+
   function renderContent(still) {
     if (still) contentEl.classList.add('still');
 
@@ -493,47 +540,33 @@
 
     if (onToday) html += statusHTML(lessons, now);
 
-    lessons.forEach(function (lesson, idx) {
-      const start = toMinutes(lesson.start);
-      const end = toMinutes(lesson.end);
-      const isNow = onToday && start != null && end != null && now >= start && now < end;
-      const isPast = onToday && end != null && now >= end;
-      const isNext = idx === found.next;
+    html += lessonListHTML(lessons, { onToday: onToday, now: now, found: found });
 
-      const cls = ['lesson'];
-      if (isNow) cls.push('now');
-      else if (isPast) cls.push('past');
+    if (onToday && found.current < 0 && found.next < 0) {
+      const tomorrowDate = addDays(TODAY, 1);
+      const tomorrowDay = (TODAY_IDX + 1) % 7;
+      const tomorrowOffset = tomorrowDay === 0 ? 1 : 0;
+      const tomorrowWeek = WEEKS[(autoIndex() + tomorrowOffset) % N] || WEEKS[0];
+      const tomorrowLessons = lessonsFor(tomorrowWeek, DAYS[tomorrowDay].key);
+      tomorrowLessons.sort(function (a, b) {
+        const am = toMinutes(a.start);
+        const bm = toMinutes(b.start);
+        return (am == null ? 9999 : am) - (bm == null ? 9999 : bm);
+      });
 
-      html += '<article class="' + cls.join(' ') + '" style="animation-delay:' + (idx * 22) + 'ms">';
+      html += '<section class="tomorrow-preview">' +
+        '<button type="button" class="tomorrow-tab" id="tomorrowScheduleBtn">' +
+          '<span>Расписание на завтра</span>' +
+          '<span class="tomorrow-date">' + esc(DAYS[tomorrowDay].short + ' ' + tomorrowDate.getDate()) + '</span>' +
+        '</button>';
 
-      if (isNow) html += '<span class="badge-now">сейчас</span>';
-
-      html += '<div class="lesson-time">' +
-        '<span class="t-start">' + esc(lesson.start || '') + '</span>' +
-        (lesson.end ? '<span class="t-end">' + esc(lesson.end) + '</span>' : '');
-
-      if (isNext && start != null) {
-        html += '<span class="t-left">через ' + humanMinutes(start - now) + '</span>';
-      } else if (isNow && end != null) {
-        html += '<span class="t-left">ещё ' + humanMinutes(end - now) + '</span>';
+      if (tomorrowLessons.length) {
+        html += '<div class="tomorrow-lessons">' + lessonListHTML(tomorrowLessons, {}) + '</div>';
+      } else {
+        html += '<div class="tomorrow-empty">Завтра пар нет</div>';
       }
-
-      html += '</div>';
-
-      html += '<div class="lesson-body"><p class="lesson-subject">';
-      if (lesson.kind) html += '<span class="kind">' + esc(lesson.kind) + '</span>';
-      html += esc(lesson.subject || 'Без названия');
-      html += '</p>';
-
-      const chips = [];
-      if (lesson.room) chips.push('<span class="chip room">' + esc(lesson.room) + '</span>');
-      if (lesson.teacher) chips.push('<span class="chip teacher">' + esc(lesson.teacher) + '</span>');
-      if (chips.length) html += '<p class="lesson-meta">' + chips.join('') + '</p>';
-
-      if (lesson.note) html += '<p class="lesson-note">' + esc(lesson.note) + '</p>';
-
-      html += '</div></article>';
-    });
+      html += '</section>';
+    }
 
     contentEl.innerHTML = html;
 
@@ -566,6 +599,15 @@
     renderTodayBtn();
     document.title = (currentWeek().label || 'Расписание') + ' · Расписание';
   }
+
+  contentEl.addEventListener('click', function (event) {
+    const tomorrowButton = event.target.closest && event.target.closest('#tomorrowScheduleBtn');
+    if (!tomorrowButton) return;
+    const tomorrowDay = (TODAY_IDX + 1) % 7;
+    state.offset = tomorrowDay === 0 ? 1 : 0;
+    state.day = tomorrowDay;
+    render();
+  });
 
   todayBtn.addEventListener('click', function () {
     state.offset = 0;
