@@ -153,6 +153,13 @@ body {
   min-height: 18px;
 }
 
+.app-version {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  opacity: .78;
+}
+
 .topbar-actions {
   display: flex;
   align-items: center;
@@ -917,6 +924,7 @@ body {
       <div class="titles">
         <h1>Расписание</h1>
         <p class="subtitle" id="groupName"></p>
+        <p class="app-version" id="appVersion">Версия 3.0.5</p>
       </div>
       <div class="topbar-actions">
         <button type="button" class="ghost-btn" id="todayBtn" hidden>Сегодня</button>
@@ -1085,6 +1093,8 @@ globalThis.SCHEDULE = {
   const WEEKS = DATA.weeks;
   const N = WEEKS.length;
   const MINUTES_ONLY = !!(DATA.meta && DATA.meta.minutesOnly);
+  const APP_VERSION = '3.0.5';
+  const LATEST_RELEASE_URL = 'https://api.github.com/repos/Krocozab/raspisanie-3.0/releases/latest';
 
   const DAYS = [
     { key: 'mon', short: 'Пн', full: 'Понедельник' },
@@ -1771,16 +1781,69 @@ globalThis.SCHEDULE = {
 
   /* ---------------- обновление приложения ---------------- */
 
+  const appUpdateBtn = document.getElementById('appUpdateBtn');
+
+  function compareVersions(a, b) {
+    const left = String(a || '').replace(/^v/i, '').split('.').map(Number);
+    const right = String(b || '').replace(/^v/i, '').split('.').map(Number);
+    for (let i = 0; i < 3; i++) {
+      const l = Number.isFinite(left[i]) ? left[i] : 0;
+      const r = Number.isFinite(right[i]) ? right[i] : 0;
+      if (l !== r) return l - r;
+    }
+    return 0;
+  }
+
+  function openUpdateUrl(url) {
+    if (!url) return;
+    if (window.AndroidApp && typeof window.AndroidApp.openUpdate === 'function') {
+      window.AndroidApp.openUpdate(url);
+    } else {
+      window.open(url, '_blank', 'noopener');
+    }
+  }
+
+  if (appUpdateBtn) {
+    appUpdateBtn.addEventListener('click', function () {
+      const url = appUpdateBtn.getAttribute('data-update-url');
+      if (!url) return;
+      appUpdateBtn.disabled = true;
+      appUpdateBtn.textContent = 'Открываем загрузку…';
+      openUpdateUrl(url);
+    });
+  }
+
+  function checkLatestAppUpdate() {
+    fetch(LATEST_RELEASE_URL, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (release) {
+        if (!release || !release.tag_name || compareVersions(release.tag_name, APP_VERSION) <= 0 || !appUpdateBtn) return;
+        const apk = Array.isArray(release.assets) ? release.assets.find(function (asset) {
+          return asset && asset.name === 'raspisanie.apk';
+        }) : null;
+        appUpdateBtn.setAttribute('data-update-url', (apk && apk.browser_download_url) || release.html_url);
+        appUpdateBtn.textContent = 'Обновить приложение · ' + release.tag_name;
+        appUpdateBtn.hidden = false;
+        appUpdateBtn.setAttribute('aria-label', 'Доступно обновление приложения ' + release.tag_name);
+      })
+      .catch(function () { /* проверка обновления необязательна для работы приложения */ });
+  }
+
+  // Проверяем обновление и в браузере, и внутри Android APK.
+  checkLatestAppUpdate();
+  setInterval(function () {
+    if (!document.hidden) checkLatestAppUpdate();
+  }, 30 * 60 * 1000);
+
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
     window.addEventListener('load', function () {
-      const updateBtn = document.getElementById('appUpdateBtn');
       let registration = null;
       let updateAccepted = false;
 
       function showUpdateButton() {
-        if (!updateBtn) return;
-        updateBtn.hidden = false;
-        updateBtn.setAttribute('aria-label', 'Доступно обновление приложения');
+        if (!appUpdateBtn || appUpdateBtn.getAttribute('data-update-url')) return;
+        appUpdateBtn.hidden = false;
+        appUpdateBtn.setAttribute('aria-label', 'Доступно обновление приложения');
       }
 
       navigator.serviceWorker.register('sw.js').then(function (reg) {
@@ -1809,11 +1872,12 @@ globalThis.SCHEDULE = {
         }, 30 * 60 * 1000);
       }).catch(function () { /* без офлайна */ });
 
-      if (updateBtn) {
-        updateBtn.addEventListener('click', function () {
+      if (appUpdateBtn) {
+        appUpdateBtn.addEventListener('click', function () {
+          if (appUpdateBtn.getAttribute('data-update-url')) return;
           updateAccepted = true;
-          updateBtn.disabled = true;
-          updateBtn.textContent = 'Обновляем…';
+          appUpdateBtn.disabled = true;
+          appUpdateBtn.textContent = 'Обновляем…';
           if (registration && registration.waiting) {
             registration.waiting.postMessage({ type: 'SKIP_WAITING' });
           } else {
