@@ -155,6 +155,7 @@
   const footnoteEl = document.getElementById('footnote');
   const todayBtn = document.getElementById('todayBtn');
   const themeBtn = document.getElementById('themeBtn');
+  const themeMenu = document.getElementById('themeMenu');
   const weatherCard = document.getElementById('weatherCard');
   const weatherIcon = document.getElementById('weatherIcon');
   const weatherTemp = document.getElementById('weatherTemp');
@@ -583,17 +584,26 @@
 
   /* ---------------- тема ---------------- */
 
+  const THEME_META_COLORS = {
+    dark: '#0d1220',
+    light: '#f1f4fb',
+    ocean: '#071a2d',
+    sunset: '#24131b',
+    forest: '#0e1e19',
+  };
+
   function applyTheme(theme) {
+    if (!THEME_META_COLORS[theme]) theme = 'dark';
     document.documentElement.setAttribute('data-theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'light' ? '#f1f4fb' : '#0d1220');
+    if (meta) meta.setAttribute('content', THEME_META_COLORS[theme]);
     try { localStorage.setItem('schedule.theme', theme); } catch (e) { /* ignore */ }
   }
 
   (function initTheme() {
     let saved = null;
     try { saved = localStorage.getItem('schedule.theme'); } catch (e) { saved = null; }
-    if (saved === 'light' || saved === 'dark') {
+    if (saved && THEME_META_COLORS[saved]) {
       applyTheme(saved);
     } else {
       const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -602,7 +612,24 @@
   })();
 
   themeBtn.addEventListener('click', function () {
-    applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    const isOpen = !themeMenu.hidden;
+    themeMenu.hidden = isOpen;
+    themeBtn.setAttribute('aria-expanded', String(!isOpen));
+  });
+
+  themeMenu.addEventListener('click', function (event) {
+    const option = event.target.closest && event.target.closest('[data-theme-option]');
+    if (!option) return;
+    applyTheme(option.getAttribute('data-theme-option'));
+    themeMenu.hidden = true;
+    themeBtn.setAttribute('aria-expanded', 'false');
+  });
+
+  document.addEventListener('click', function (event) {
+    if (!event.target.closest('.theme-picker')) {
+      themeMenu.hidden = true;
+      themeBtn.setAttribute('aria-expanded', 'false');
+    }
   });
 
   /* ---------------- живое обновление счётчика ---------------- */
@@ -647,7 +674,13 @@
       navigator.serviceWorker.register('sw.js').then(function (reg) {
         registration = reg;
 
-        if (reg.waiting && navigator.serviceWorker.controller) showUpdateButton();
+        function revealWaitingUpdate() {
+          if (reg.waiting && navigator.serviceWorker.controller) showUpdateButton();
+        }
+
+        // Проверяем обновление сразу при открытии приложения.
+        revealWaitingUpdate();
+        reg.update().then(revealWaitingUpdate).catch(function () { /* без обновления */ });
 
         reg.addEventListener('updatefound', function () {
           const installing = reg.installing;
@@ -660,7 +693,7 @@
         });
 
         setInterval(function () {
-          if (!document.hidden) reg.update().catch(function () { /* без обновления */ });
+          if (!document.hidden) reg.update().then(revealWaitingUpdate).catch(function () { /* без обновления */ });
         }, 30 * 60 * 1000);
       }).catch(function () { /* без офлайна */ });
 

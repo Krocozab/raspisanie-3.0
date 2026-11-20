@@ -25,7 +25,16 @@
       </div>
       <div class="topbar-actions">
         <button type="button" class="ghost-btn" id="todayBtn" hidden>Сегодня</button>
-        <button type="button" class="icon-btn" id="themeBtn" aria-label="Сменить тему" title="Сменить тему">◐</button>
+        <div class="theme-picker">
+          <button type="button" class="icon-btn" id="themeBtn" aria-label="Выбрать тему" aria-expanded="false" title="Выбрать тему">◐</button>
+          <div class="theme-menu" id="themeMenu" role="menu" hidden>
+            <button type="button" role="menuitem" data-theme-option="dark"><span>🌌</span> Ночь</button>
+            <button type="button" role="menuitem" data-theme-option="light"><span>☁️</span> Светлая</button>
+            <button type="button" role="menuitem" data-theme-option="ocean"><span>🌊</span> Океан</button>
+            <button type="button" role="menuitem" data-theme-option="sunset"><span>🌅</span> Закат</button>
+            <button type="button" role="menuitem" data-theme-option="forest"><span>🌿</span> Лес</button>
+          </div>
+        </div>
       </div>
     </header>
 

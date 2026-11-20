@@ -48,6 +48,57 @@ html[data-theme="light"] {
   --shadow: 0 10px 26px rgba(30, 45, 80, .12);
 }
 
+html[data-theme="ocean"] {
+  color-scheme: dark;
+  --bg: #071a2d;
+  --bg-glow-1: rgba(44, 190, 255, .2);
+  --bg-glow-2: rgba(52, 220, 190, .14);
+  --surface: #0d2a45;
+  --surface-2: #123b5d;
+  --text: #e5f7ff;
+  --muted: #8fb9cc;
+  --line: rgba(160, 225, 255, .14);
+  --accent: #49c6ff;
+  --accent-2: #5b8cff;
+  --accent-ink: #061522;
+  --now: #4adea0;
+  --shadow: 0 12px 32px rgba(0, 8, 20, .38);
+}
+
+html[data-theme="sunset"] {
+  color-scheme: dark;
+  --bg: #24131b;
+  --bg-glow-1: rgba(255, 128, 86, .22);
+  --bg-glow-2: rgba(218, 92, 202, .16);
+  --surface: #3a1f2b;
+  --surface-2: #51293a;
+  --text: #fff0f1;
+  --muted: #d4a8b1;
+  --line: rgba(255, 218, 225, .14);
+  --accent: #ff9060;
+  --accent-2: #d76bff;
+  --accent-ink: #2b1021;
+  --now: #72d6a1;
+  --shadow: 0 12px 32px rgba(28, 5, 18, .4);
+}
+
+html[data-theme="forest"] {
+  color-scheme: dark;
+  --bg: #0e1e19;
+  --bg-glow-1: rgba(86, 200, 135, .2);
+  --bg-glow-2: rgba(183, 213, 94, .12);
+  --surface: #153129;
+  --surface-2: #1d4234;
+  --text: #ecfff3;
+  --muted: #9dc4ac;
+  --line: rgba(195, 245, 208, .14);
+  --accent: #57c887;
+  --accent-2: #b3d65e;
+  --accent-ink: #092015;
+  --now: #71e2a5;
+  --shadow: 0 12px 32px rgba(3, 15, 9, .4);
+}
+
 * { box-sizing: border-box; }
 
 html, body {
@@ -108,6 +159,49 @@ body {
   gap: 8px;
   padding-top: 3px;
 }
+
+.theme-picker {
+  position: relative;
+}
+
+.theme-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.theme-menu[hidden] { display: none; }
+
+.theme-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-menu button:hover,
+.theme-menu button:focus-visible { background: var(--surface-2); }
+.theme-menu button span { width: 20px; font-size: 16px; text-align: center; }
 
 .icon-btn {
   width: 40px;
@@ -768,7 +862,16 @@ body {
       </div>
       <div class="topbar-actions">
         <button type="button" class="ghost-btn" id="todayBtn" hidden>Сегодня</button>
-        <button type="button" class="icon-btn" id="themeBtn" aria-label="Сменить тему" title="Сменить тему">◐</button>
+        <div class="theme-picker">
+          <button type="button" class="icon-btn" id="themeBtn" aria-label="Выбрать тему" aria-expanded="false" title="Выбрать тему">◐</button>
+          <div class="theme-menu" id="themeMenu" role="menu" hidden>
+            <button type="button" role="menuitem" data-theme-option="dark"><span>🌌</span> Ночь</button>
+            <button type="button" role="menuitem" data-theme-option="light"><span>☁️</span> Светлая</button>
+            <button type="button" role="menuitem" data-theme-option="ocean"><span>🌊</span> Океан</button>
+            <button type="button" role="menuitem" data-theme-option="sunset"><span>🌅</span> Закат</button>
+            <button type="button" role="menuitem" data-theme-option="forest"><span>🌿</span> Лес</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -1064,6 +1167,7 @@ globalThis.SCHEDULE = {
   const footnoteEl = document.getElementById('footnote');
   const todayBtn = document.getElementById('todayBtn');
   const themeBtn = document.getElementById('themeBtn');
+  const themeMenu = document.getElementById('themeMenu');
   const weatherCard = document.getElementById('weatherCard');
   const weatherIcon = document.getElementById('weatherIcon');
   const weatherTemp = document.getElementById('weatherTemp');
@@ -1492,17 +1596,26 @@ globalThis.SCHEDULE = {
 
   /* ---------------- тема ---------------- */
 
+  const THEME_META_COLORS = {
+    dark: '#0d1220',
+    light: '#f1f4fb',
+    ocean: '#071a2d',
+    sunset: '#24131b',
+    forest: '#0e1e19',
+  };
+
   function applyTheme(theme) {
+    if (!THEME_META_COLORS[theme]) theme = 'dark';
     document.documentElement.setAttribute('data-theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'light' ? '#f1f4fb' : '#0d1220');
+    if (meta) meta.setAttribute('content', THEME_META_COLORS[theme]);
     try { localStorage.setItem('schedule.theme', theme); } catch (e) { /* ignore */ }
   }
 
   (function initTheme() {
     let saved = null;
     try { saved = localStorage.getItem('schedule.theme'); } catch (e) { saved = null; }
-    if (saved === 'light' || saved === 'dark') {
+    if (saved && THEME_META_COLORS[saved]) {
       applyTheme(saved);
     } else {
       const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -1511,7 +1624,24 @@ globalThis.SCHEDULE = {
   })();
 
   themeBtn.addEventListener('click', function () {
-    applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    const isOpen = !themeMenu.hidden;
+    themeMenu.hidden = isOpen;
+    themeBtn.setAttribute('aria-expanded', String(!isOpen));
+  });
+
+  themeMenu.addEventListener('click', function (event) {
+    const option = event.target.closest && event.target.closest('[data-theme-option]');
+    if (!option) return;
+    applyTheme(option.getAttribute('data-theme-option'));
+    themeMenu.hidden = true;
+    themeBtn.setAttribute('aria-expanded', 'false');
+  });
+
+  document.addEventListener('click', function (event) {
+    if (!event.target.closest('.theme-picker')) {
+      themeMenu.hidden = true;
+      themeBtn.setAttribute('aria-expanded', 'false');
+    }
   });
 
   /* ---------------- живое обновление счётчика ---------------- */
@@ -1556,7 +1686,13 @@ globalThis.SCHEDULE = {
       navigator.serviceWorker.register('sw.js').then(function (reg) {
         registration = reg;
 
-        if (reg.waiting && navigator.serviceWorker.controller) showUpdateButton();
+        function revealWaitingUpdate() {
+          if (reg.waiting && navigator.serviceWorker.controller) showUpdateButton();
+        }
+
+        // Проверяем обновление сразу при открытии приложения.
+        revealWaitingUpdate();
+        reg.update().then(revealWaitingUpdate).catch(function () { /* без обновления */ });
 
         reg.addEventListener('updatefound', function () {
           const installing = reg.installing;
@@ -1569,7 +1705,7 @@ globalThis.SCHEDULE = {
         });
 
         setInterval(function () {
-          if (!document.hidden) reg.update().catch(function () { /* без обновления */ });
+          if (!document.hidden) reg.update().then(revealWaitingUpdate).catch(function () { /* без обновления */ });
         }, 30 * 60 * 1000);
       }).catch(function () { /* без офлайна */ });
 

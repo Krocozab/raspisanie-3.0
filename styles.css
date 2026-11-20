@@ -33,6 +33,57 @@ html[data-theme="light"] {
   --shadow: 0 10px 26px rgba(30, 45, 80, .12);
 }
 
+html[data-theme="ocean"] {
+  color-scheme: dark;
+  --bg: #071a2d;
+  --bg-glow-1: rgba(44, 190, 255, .2);
+  --bg-glow-2: rgba(52, 220, 190, .14);
+  --surface: #0d2a45;
+  --surface-2: #123b5d;
+  --text: #e5f7ff;
+  --muted: #8fb9cc;
+  --line: rgba(160, 225, 255, .14);
+  --accent: #49c6ff;
+  --accent-2: #5b8cff;
+  --accent-ink: #061522;
+  --now: #4adea0;
+  --shadow: 0 12px 32px rgba(0, 8, 20, .38);
+}
+
+html[data-theme="sunset"] {
+  color-scheme: dark;
+  --bg: #24131b;
+  --bg-glow-1: rgba(255, 128, 86, .22);
+  --bg-glow-2: rgba(218, 92, 202, .16);
+  --surface: #3a1f2b;
+  --surface-2: #51293a;
+  --text: #fff0f1;
+  --muted: #d4a8b1;
+  --line: rgba(255, 218, 225, .14);
+  --accent: #ff9060;
+  --accent-2: #d76bff;
+  --accent-ink: #2b1021;
+  --now: #72d6a1;
+  --shadow: 0 12px 32px rgba(28, 5, 18, .4);
+}
+
+html[data-theme="forest"] {
+  color-scheme: dark;
+  --bg: #0e1e19;
+  --bg-glow-1: rgba(86, 200, 135, .2);
+  --bg-glow-2: rgba(183, 213, 94, .12);
+  --surface: #153129;
+  --surface-2: #1d4234;
+  --text: #ecfff3;
+  --muted: #9dc4ac;
+  --line: rgba(195, 245, 208, .14);
+  --accent: #57c887;
+  --accent-2: #b3d65e;
+  --accent-ink: #092015;
+  --now: #71e2a5;
+  --shadow: 0 12px 32px rgba(3, 15, 9, .4);
+}
+
 * { box-sizing: border-box; }
 
 html, body {
@@ -93,6 +144,49 @@ body {
   gap: 8px;
   padding-top: 3px;
 }
+
+.theme-picker {
+  position: relative;
+}
+
+.theme-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.theme-menu[hidden] { display: none; }
+
+.theme-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-menu button:hover,
+.theme-menu button:focus-visible { background: var(--surface-2); }
+.theme-menu button span { width: 20px; font-size: 16px; text-align: center; }
 
 .icon-btn {
   width: 40px;

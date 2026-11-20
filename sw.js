@@ -1,4 +1,4 @@
-const CACHE = 'schedule-v7';
+const CACHE = 'schedule-v9';
 
 const ASSETS = [
   './',
@@ -16,8 +16,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE)
       .then((cache) => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-      .catch(() => self.skipWaiting())
+      .catch(() => undefined)
   );
 });
 
