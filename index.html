@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1220">
+  <title>Расписание занятий</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Расписание">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="titles">
+        <h1>Расписание</h1>
+        <p class="subtitle" id="groupName"></p>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" class="ghost-btn" id="todayBtn" hidden>Сегодня</button>
+        <button type="button" class="icon-btn" id="themeBtn" aria-label="Сменить тему" title="Сменить тему">◐</button>
+      </div>
+    </header>
+
+    <div class="week-switch" id="weekSwitch" role="tablist" aria-label="Выбор недели"></div>
+
+    <nav class="day-tabs" id="dayTabs" aria-label="День недели"></nav>
+
+    <main class="content" id="content"></main>
+
+    <section class="weather-card is-loading" id="weatherCard" aria-labelledby="weatherTitle">
+      <div class="weather-main">
+        <div class="weather-icon" id="weatherIcon" aria-hidden="true">☀️</div>
+        <div class="weather-heading">
+          <p class="weather-kicker" id="weatherTitle">Погода сегодня</p>
+          <p class="weather-place">Краснодар</p>
+        </div>
+        <div class="weather-temp" id="weatherTemp" aria-label="Температура">—</div>
+      </div>
+      <div class="weather-details" id="weatherDetails"></div>
+      <div class="weather-forecast" id="weatherForecast" aria-label="Прогноз на ближайшие дни"></div>
+      <div class="weather-hourly-block">
+        <div class="weather-hourly-label">
+          <span>По часам</span>
+          <button type="button" class="weather-day-button" id="weatherDayButton" aria-haspopup="listbox" aria-expanded="false">Сегодня ▾</button>
+        </div>
+        <div class="weather-day-menu" id="weatherDayMenu" role="listbox" hidden></div>
+        <div class="weather-hourly" id="weatherHourly" aria-label="Почасовой прогноз"></div>
+      </div>
+      <p class="weather-status" id="weatherStatus">Загружаем прогноз…</p>
+    </section>
+
+    <footer class="footnote" id="footnote"></footer>
+  </div>
+
+  <script src="schedule.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
